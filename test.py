@@ -33,7 +33,7 @@ program2 = "load x\nadd y\nstore x\nx, dec 10\ny, dec 20"
 
 def programReader(program):
     instructions = program.split("\n")
-    programCounter = 256
+    programCounter = 0
     for instruction in instructions:
         if instruction == "":
             pass
@@ -47,9 +47,9 @@ def programReader(program):
 
 def programTranslator(program):
     marie_memory.clear()
-    MarieRegisters.PC = 256
+    MarieRegisters.PC = 0
     instructions = program.split("\n")
-    programCounter = 256
+    programCounter = 0
     empty_lines = 0
     for instruction in instructions:
         if instruction == "":
@@ -167,3 +167,57 @@ def error_handling(pc, error_message):
 
     # Optional: If you want to block interaction with the main window while the popup is open, use:
     error_popup.grab_set()
+
+def input_value():
+    # Create a top-level window
+    root = ctk.CTkToplevel()
+    root.title("Input Value")
+    root.geometry("320x250")
+
+    entered_value = ctk.StringVar(value="")  
+    type_var = ctk.StringVar(value="DEC")
+
+    def on_accept():
+        # Get the input value and selected type
+        input_val = entered_value.get()
+        selected_type = type_var.get()
+
+        try:
+            if selected_type == "DEC":
+                print(input_val)
+            elif selected_type == "HEX":
+                print(hex_to_bin(input_val))
+            elif selected_type == "ASCII":
+                print(ord(input_val))
+        except Exception as e:
+            print(f"Error processing input: {e}")
+
+
+    # Title
+    label_title = ctk.CTkLabel(root, text="Please Input Value", font=("Arial", 18), fg_color="transparent")
+    label_title.pack(pady=20)
+
+    # Value label
+    label_value = ctk.CTkLabel(root, text="Value:", font=("Arial", 14), fg_color="transparent", text_color="white")
+    label_value.place(relx=0.23, rely=0.3, anchor="e")
+
+    # Entry for the value
+    value_entry = ctk.CTkEntry(root, textvariable=entered_value, width=180, font=("Arial", 14))
+    value_entry.place(relx=0.55, rely=0.3, anchor="center")
+
+    # Type label
+    label_type = ctk.CTkLabel(root, text="Type:", font=("Arial", 14), fg_color="transparent", text_color="white")
+    label_type.place(relx=0.23, rely=0.5, anchor="e")
+
+    # Dropdown menu
+    type_menu = ctk.CTkOptionMenu(root, variable=type_var, values=["DEC", "HEX", "ASCII"])
+    type_menu.place(relx=0.55, rely=0.5, anchor="center")
+
+    # Accept button
+    accept_button = ctk.CTkButton(root, text="Accept", command=on_accept)
+    accept_button.place(relx=0.5, rely=0.8, anchor="center")
+
+    # Start the main event loop
+    root.mainloop()
+
+    return entered_value.get()

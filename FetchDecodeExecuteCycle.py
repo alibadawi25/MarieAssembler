@@ -18,7 +18,7 @@ def executeProgram(marie_memory, outputTextbox, app):
         else:
             break
 
-    MarieRegisters.PC = 256
+    MarieRegisters.PC = 0
     MarieRegisters.MAR = 0
     MarieRegisters.IR = 0
     MarieRegisters.AC = 0

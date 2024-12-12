@@ -135,7 +135,7 @@ def run_function(outputTextbox, app):
     executeProgram(test.marie_memory, outputTextbox, app)
 
 
-def option_changed(new_option):
+def option_changed(new_option): 
     global output_mode
     output_mode = new_option
 

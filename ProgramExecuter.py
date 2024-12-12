@@ -1,5 +1,6 @@
 from MarieRegister import *
 from MarieMemory import MarieMemory
+from test import *
 
 def jns(loc, marie_memory):
     print(f"Function 'jns' called with loc = {loc}")
@@ -36,8 +37,7 @@ def subt(loc, marie_memory):
     MarieRegisters.AC -= int(MarieRegisters.MBR, 2)
 
 def inputInstruction(marie_memory):
-    print("Function 'inputInstruction' called.")
-    MarieRegisters.AC = int(input("Enter a value: "))
+    MarieRegisters.AC = int(input_value())
 
 def output(marie_memory):
     print("Function 'output' called.")
