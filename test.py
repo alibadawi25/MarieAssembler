@@ -174,50 +174,71 @@ def input_value():
     root.title("Input Value")
     root.geometry("320x250")
 
-    entered_value = ctk.StringVar(value="")  
+    entered_value = ctk.StringVar(value="")
     type_var = ctk.StringVar(value="DEC")
+    result = {"value": None}  # Dictionary to store the result
 
     def on_accept():
-        # Get the input value and selected type
-        input_val = entered_value.get()
-        selected_type = type_var.get()
-
         try:
-            if selected_type == "DEC":
-                print(input_val)
-            elif selected_type == "HEX":
-                print(hex_to_bin(input_val))
-            elif selected_type == "ASCII":
-                print(ord(input_val))
-        except Exception as e:
-            print(f"Error processing input: {e}")
+            input_val = entered_value.get()
+            if type_var.get() == "DEC":
+                result["value"] = int(input_val)
+            elif type_var.get() == "HEX":
+                result["value"] = int(input_val, 16)
+            elif type_var.get() == "ASCII":
+                result["value"] = ord(input_val)
+        except Exception:
+            result["value"] = None  # Handle invalid input
+            root.destroy()
+            show_alert(title="Error",message="Invalid input provided.")
+            result["value"] = input_value()
+        root.destroy()  # Close the popup
 
-
-    # Title
+    # Add widgets
     label_title = ctk.CTkLabel(root, text="Please Input Value", font=("Arial", 18), fg_color="transparent")
     label_title.pack(pady=20)
 
-    # Value label
     label_value = ctk.CTkLabel(root, text="Value:", font=("Arial", 14), fg_color="transparent", text_color="white")
     label_value.place(relx=0.23, rely=0.3, anchor="e")
 
-    # Entry for the value
     value_entry = ctk.CTkEntry(root, textvariable=entered_value, width=180, font=("Arial", 14))
     value_entry.place(relx=0.55, rely=0.3, anchor="center")
 
-    # Type label
     label_type = ctk.CTkLabel(root, text="Type:", font=("Arial", 14), fg_color="transparent", text_color="white")
     label_type.place(relx=0.23, rely=0.5, anchor="e")
 
-    # Dropdown menu
     type_menu = ctk.CTkOptionMenu(root, variable=type_var, values=["DEC", "HEX", "ASCII"])
     type_menu.place(relx=0.55, rely=0.5, anchor="center")
 
-    # Accept button
     accept_button = ctk.CTkButton(root, text="Accept", command=on_accept)
     accept_button.place(relx=0.5, rely=0.8, anchor="center")
 
-    # Start the main event loop
-    root.mainloop()
+    # Prevent interaction with the main window
+    root.grab_set()
 
-    return entered_value.get()
+    # Block execution until this window is closed
+    root.wait_window()
+
+    # Return the result after the popup closes
+    return result["value"]
+
+def show_alert(title="Alert", message="This is an alert message!"):
+    # Create a top-level window
+    alert_window = ctk.CTkToplevel()
+    alert_window.title(title)
+    alert_window.geometry("300x150")
+    alert_window.resizable(False, False)
+
+    # Add a label for the alert message
+    message_label = ctk.CTkLabel(alert_window, text=message, font=("Arial", 14), wraplength=280, justify="center")
+    message_label.pack(pady=20)
+
+    # Add a button to close the alert
+    close_button = ctk.CTkButton(alert_window, text="OK", command=alert_window.destroy)
+    close_button.pack(pady=10)
+
+    # Prevent interaction with the main window
+    alert_window.grab_set()
+
+    # Block execution until the alert window is closed
+    alert_window.wait_window()

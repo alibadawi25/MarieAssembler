@@ -129,6 +129,10 @@ def update_text(outputTextbox):
             print(MarieRegisters.OUT)
             outputTextbox.insert("end", chr(MarieRegisters.OUT))  # Insert new text
             MarieRegisters.OUT = ""
+
+    if MarieRegisters.IN != "":
+        MarieRegisters.AC = MarieRegisters.IN
+        MarieRegisters.IN = ""
     outputTextbox.configure(state="disabled")  # Disable editing again
 
 
