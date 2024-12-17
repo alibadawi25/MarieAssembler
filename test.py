@@ -59,6 +59,9 @@ def programTranslator(program):
             if MarieRegisters.PC >= 0:
                 instructionSplitter = re.split(r"[ \t]+", instruction.strip())
                 if instructionSplitter[0][-1] == ",":
+                    if len(instructionSplitter) < 2:
+                        error_handling((programCounter + empty_lines), "No instruction was written.")
+                        MarieRegisters.PC = -1
                     if instructionSplitter[1].lower() in instructionSet:
                         instructionCode = translate(instructionSplitter[1])
                         marie_memory.write(programCounter, instructionCode, 0)
@@ -87,8 +90,14 @@ def programTranslator(program):
                         else:
                             marie_memory.write(programCounter, format(0, '012b'), 1)
                     elif instructionSplitter[1].upper() == "DEC":
+                        if len(instructionSplitter) < 3:
+                            error_handling((programCounter + empty_lines), "No value was written.")
+                            MarieRegisters.PC = -1
                         marie_memory.write(programCounter, format(int(instructionSplitter[2]), '016b'), 0)
                     elif instructionSplitter[1].upper() == "HEX":
+                        if len(instructionSplitter) < 3:
+                            error_handling((programCounter + empty_lines), "No value was written.")
+                            MarieRegisters.PC = -1
                         marie_memory.write(programCounter, hex_to_bin(instructionSplitter[2]), 0)
                     else:
                         error_handling((programCounter+empty_lines), "Instruction " + instruction + " not found.")
@@ -125,8 +134,14 @@ def programTranslator(program):
                         else:
                             marie_memory.write(programCounter, format(0, '012b'), 1)
                     elif instructionSplitter[0].upper() == "DEC":
+                        if len(instructionSplitter) < 2:
+                            error_handling((programCounter + empty_lines), "No value was written.")
+                            MarieRegisters.PC = -1
                         marie_memory.write(programCounter, format(int(instructionSplitter[1]), '016b'), 0)
                     elif instructionSplitter[0].upper() == "HEX":
+                        if len(instructionSplitter) < 2:
+                            error_handling((programCounter + empty_lines), "No value was written.")
+                            MarieRegisters.PC = -1
                         marie_memory.write(programCounter, hex_to_bin(instructionSplitter[1]), 0)
                     else:
                         error_handling((programCounter+empty_lines), "Instruction " + instruction + " not found.")
@@ -142,7 +157,7 @@ def hex_to_bin(hex_string):
 
 def dec_to_hex(dec_string):
     decimal_value = int(dec_string)
-    hex_value = hex(decimal_value)[2:]  
+    hex_value = hex(decimal_value)[2:]
     print("string "+ hex_value)
     return hex_value.upper()
 
