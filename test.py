@@ -28,7 +28,7 @@ while True:
         break
 '''
 
-program2 = "load x\nadd y\nstore x\nx, dec 10\ny, dec 20"
+program2 = "load x\nadd y\nstore x\nhalt\nx, dec 10\ny, dec 20"
 
 
 def programReader(program):
