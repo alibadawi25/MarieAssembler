@@ -66,6 +66,7 @@ def add(loc):
     print(f"Function 'add' called with loc = {loc}")
     MarieRegisters.MAR = loc
     MarieRegisters.MBR = marie_memory.read(MarieRegisters.MAR)
+    print(f"MBR: {MarieRegisters.MBR}")
     MarieRegisters.AC += int(MarieRegisters.MBR, 2)
 
 

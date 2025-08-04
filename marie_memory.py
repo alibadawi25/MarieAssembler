@@ -1,4 +1,5 @@
 class MarieMemory:
+    starting_pos = 0 
     """
     A class representing the memory of the Marie architecture.
 

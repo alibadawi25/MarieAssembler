@@ -15,30 +15,3 @@ class OutputMode:
     """
 
     output_mode = "DEC"
-
-    def __init__(self, mode="DEC"):
-        """
-        Initializes the OutputMode with the given mode.
-
-        Args:
-            mode (str): The output mode to set (default is "DEC").
-        """
-        self.output_mode = mode
-
-    def get_output_mode(self):
-        """
-        Returns the current output mode.
-
-        Returns:
-            str: The current output mode.
-        """
-        return self.output_mode
-
-    def set_output_mode(self, mode):
-        """
-        Sets the output mode to a new value.
-
-        Args:
-            mode (str): The output mode to set.
-        """
-        self.output_mode = mode
