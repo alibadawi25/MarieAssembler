@@ -15,7 +15,7 @@ def executeProgram(output_textbox, app):
     """
     program_length = 0
     # Calculate the program length by reading memory until a zero entry is found
-    for i in range(4096):  # Memory size of 4096
+    for i in range(0,4096):  # Memory size of 4096
         entry = marie_memory.read(i)  # Read memory at index i
         if entry != 0:  # Non-zero entry means part of the program
             program_length += 1
@@ -23,7 +23,7 @@ def executeProgram(output_textbox, app):
             break
 
     # Initialize the registers to zero before starting program execution
-    MarieRegisters.PC = 0
+    MarieRegisters.PC = marie_memory.starting_pos  # Set Program Counter to starting position
     MarieRegisters.MAR = 0
     MarieRegisters.IR = 0
     MarieRegisters.AC = 0
@@ -34,15 +34,18 @@ def executeProgram(output_textbox, app):
         Executes one fetch-decode cycle and schedules the next cycle.
 
         This function simulates the fetch and decode steps of the Marie architecture.
-        It updates the output textbox after each cycle and schedules the next cycle
-        after 100 milliseconds (0.1 seconds).
+        It updates the output textbox after each cycle and schedules the next cycle.
         """
+
+        
         if MarieRegisters.PC >= 0:
-            fetch()  # Fetch the instruction based on PC
+            confirmation = fetch()  # Fetch the instruction based on PC
+            if confirmation == -1:
+                app.after(1, fetch_decode_cycle)
             decode()  # Decode the instruction
             update_text(output_textbox)  # Update the GUI textbox with current state
             # Schedule the next cycle after 100ms (0.1s)
-            app.after(100, fetch_decode_cycle)
+            app.after(1, fetch_decode_cycle)
 
     # Start the fetch-decode cycle
     fetch_decode_cycle()
@@ -60,6 +63,10 @@ def fetch():
     """
     MarieRegisters.MAR = MarieRegisters.PC
     MarieRegisters.IR = marie_memory.read(MarieRegisters.MAR)
+    if MarieRegisters.IR == 0:
+        print("Program execution completed.")
+        MarieRegisters.PC += 1
+        return -1
     MarieRegisters.PC += 1
 
 def decode():

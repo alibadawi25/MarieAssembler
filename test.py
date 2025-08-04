@@ -17,9 +17,21 @@ def program_reader(program):
     Reads the assembly program line by line and populates the symbol table
     for labels (such as variables and addresses).
     """
+    
     instructions = program.split("\n")
     program_counter = 0
-    for instruction in instructions:
+    # if 0 then start as default
+    is_default = 0
+
+    if re.split(r"[ \t]+", instructions[0].strip())[0].upper() == "ORG":
+        starting_pos = int(re.split(r"[ \t]+", instructions[0].strip())[1], 16)
+        print(f"Starting position set to {starting_pos}")
+        # If the first instruction is ORG, set the starting position
+        # and mark as default to 1 to ignore it in the loop
+        is_default = 1
+        program_counter += starting_pos
+        marie_memory.starting_pos = starting_pos
+    for instruction in instructions[is_default:]:
         if instruction != "":
             instruction_splitter = re.split(r"[ \t]+", instruction.strip())
             if instruction_splitter[0][-1] == ",":
@@ -37,8 +49,21 @@ def program_translator(program):
     MarieRegisters.PC = 0
     instructions = program.split("\n")
     program_counter = 0
+    # if 0 then start as default
+    is_default = 0
+    if re.split(r"[ \t]+", instructions[0].strip())[0].upper() == "ORG":
+        starting_pos = int(re.split(r"[ \t]+", instructions[0].strip())[1], 16)
+        print(f"Starting position set to {starting_pos}")
+        # If the first instruction is ORG, set the starting position
+        # and mark as default to 1 to ignore it in the loop
+        is_default = 1
+        program_counter += starting_pos
+        MarieRegisters.PC += starting_pos
+        marie_memory.starting_pos = starting_pos
+
     empty_lines = 0
-    for instruction in instructions:
+
+    for instruction in instructions[is_default:]:
         if instruction == "":
             empty_lines += 1
         else:
@@ -94,8 +119,15 @@ def program_translator(program):
                             error_handling((program_counter + empty_lines),
                                            "No value was written.")
                             MarieRegisters.PC = -1
-                        marie_memory.write(program_counter,
-                                           format(int(instruction_splitter[2]), '016b'), 0)
+                        else:
+                            try:
+                                dec_value = int(instruction_splitter[2])
+                                marie_memory.write(program_counter,
+                                                   format(dec_value, '016b'), 0)
+                            except ValueError:
+                                error_handling((program_counter + empty_lines),
+                                               f"Invalid decimal number: {instruction_splitter[2]}")
+                                MarieRegisters.PC = -1
                     elif instruction_splitter[1].upper() == "HEX":
                         if len(instruction_splitter) < 3:
                             error_handling((program_counter + empty_lines),
@@ -153,9 +185,15 @@ def program_translator(program):
                             error_handling((program_counter + empty_lines),
                                            "No value was written.")
                             MarieRegisters.PC = -1
-                        marie_memory.write(program_counter,
-                                           format(int(instruction_splitter[1]),
-                                                  '016b'), 0)
+                        else:
+                            try:
+                                dec_value = int(instruction_splitter[1])
+                                marie_memory.write(program_counter,
+                                                   format(dec_value, '016b'), 0)
+                            except ValueError:
+                                error_handling((program_counter + empty_lines),
+                                               f"Invalid decimal number: {instruction_splitter[1]}")
+                                MarieRegisters.PC = -1
                     elif instruction_splitter[0].upper() == "HEX":
                         if len(instruction_splitter) < 2:
                             error_handling((program_counter + empty_lines),

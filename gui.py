@@ -34,6 +34,9 @@ instruction_set = ['jns', 'load', 'store', 'add',
                    'jumpi', 'loadi', 'storei', 'hex', 'dec']
 
 
+#s => function | variable | class | ...
+#function => def $func_name(prams): | def $func_name():
+#prams =>  pram_name, prams| pram_name
 def remove_line_numbers(input_text):
     """
     Removes line numbers from the input text.
@@ -168,6 +171,7 @@ def update_text(output_textbox):
     Returns:
         None
     """
+    print(OutputMode.output_mode)
     output_textbox.configure(state="normal")  # Temporarily enable editing
     if MarieRegisters.OUT != "":
         if OutputMode.output_mode == "DEC":
@@ -217,7 +221,8 @@ def option_changed(new_option):
     Returns:
         None
     """
-    OutputMode.OutputMode = new_option
+    print(new_option)
+    OutputMode.output_mode = new_option
 
 
 def auto_complete(input_textbox):
