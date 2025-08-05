@@ -237,7 +237,7 @@ def error_handling(pc, error_message):
     error_popup.title("Error")
     error_popup.geometry("400x200")
     error_label = ctk.CTkLabel(error_popup,
-                               text=f"Error in line {pc + 1},"
+                               text=f"Error in line {pc + 1 - marie_memory.starting_pos},"
                                                  f" {error_message}",
                                font=("Arial", 14))
     error_label.pack(pady=20)

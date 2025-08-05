@@ -23,9 +23,14 @@ Run this script to launch the GUI for the Marie Assembler.
 
 import test
 import customtkinter
+import tkinter as tk
 from marie_register import MarieRegisters
 import ErrorHandling
 from Output_Mode import OutputMode
+
+# Global variables
+output_textbox = None
+line_numbers_enabled = True
 
 # Instruction set with binary opcodes
 instruction_set = ['jns', 'load', 'store', 'add',
@@ -40,6 +45,7 @@ instruction_set = ['jns', 'load', 'store', 'add',
 def remove_line_numbers(input_text):
     """
     Removes line numbers from the input text.
+    Also removes lines that have incomplete or malformed line numbers.
 
     Args:
         input_text (str): The text with line numbers.
@@ -51,84 +57,103 @@ def remove_line_numbers(input_text):
     clean_lines = []
 
     for line in lines:
-        # Remove any existing line number (text before the first colon) and return the actual code
-        clean_lines.append(line.split(":",
-                                      1)[-1].strip())
-        # Remove line number and return the actual code
+        # More robust line number removal - handles various formats
+        if ":" in line:
+            # Split only on the first colon to preserve colons in code
+            parts = line.split(":", 1)
+            if len(parts) == 2 and parts[0].strip().isdigit():
+                # Only remove if the part before colon is purely numeric
+                content = parts[1].strip()
+                clean_lines.append(content)
+            else:
+                # Check if this looks like a malformed line number (starts with digits but incomplete)
+                stripped_line = line.strip()
+                if stripped_line and (stripped_line[0].isdigit() or stripped_line.startswith(':')):
+                    # This looks like a partially deleted line number - remove the entire line
+                    continue
+                else:
+                    # Keep the line as is if it doesn't match line number pattern
+                    clean_lines.append(line.strip())
+        else:
+            stripped_line = line.strip()
+            # Check if line starts with just digits (incomplete line number)
+            if stripped_line and stripped_line.isdigit():
+                # This is likely a line number without colon - remove it
+                continue
+            else:
+                clean_lines.append(stripped_line)
 
     return "\n".join(clean_lines)
 
 
-def add_line_numbers(input_text):
+def format_assembly_code(code_text):
     """
-    Adds line numbers to the input text.
-
+    Formats assembly code with proper indentation and spacing.
+    
     Args:
-        input_text (str): The text to which line numbers should be added.
-
+        code_text (str): The assembly code to format.
+        
     Returns:
-        str: The text with line numbers added.
+        str: The formatted assembly code.
     """
-    lines = input_text.split("\n")
-    numbered_lines = []
-
-    for i, line in enumerate(lines, start=1):
-        # Only add the line number if it's not already there
-        if not line.strip().startswith(str(i) + ":"):
-            numbered_lines.append(f"{i}: {line}")
+    lines = code_text.split('\n')
+    formatted_lines = []
+    
+    for line in lines:
+        stripped_line = line.strip()
+        if not stripped_line:
+            formatted_lines.append("")
+            continue
+            
+        # Check if line is a label (ends with comma)
+        if stripped_line.endswith(','):
+            formatted_lines.append(stripped_line)
+        # Check if line is an ORG directive
+        elif stripped_line.upper().startswith('ORG'):
+            formatted_lines.append(stripped_line.upper())
+        # Check if line is a DEC directive
+        elif ' DEC ' in stripped_line.upper():
+            parts = stripped_line.split()
+            if len(parts) >= 3:
+                label = parts[0]
+                dec_keyword = 'DEC'
+                value = ' '.join(parts[2:])
+                formatted_lines.append(f"{label} {dec_keyword} {value}")
+            else:
+                formatted_lines.append(stripped_line)
+        # Check if line is a HEX directive
+        elif ' HEX ' in stripped_line.upper():
+            parts = stripped_line.split()
+            if len(parts) >= 3:
+                label = parts[0]
+                hex_keyword = 'HEX'
+                value = ' '.join(parts[2:])
+                formatted_lines.append(f"{label} {hex_keyword} {value}")
+            else:
+                formatted_lines.append(stripped_line)
+        # Regular instruction - add some indentation
         else:
-            # If the line already starts with a number, keep it as is
-            numbered_lines.append(line.strip())  # Remove any excess spaces or characters
+            if not stripped_line.endswith(','):
+                formatted_lines.append(f"    {stripped_line}")
+            else:
+                formatted_lines.append(stripped_line)
+    
+    return '\n'.join(formatted_lines)
 
-    return "\n".join(numbered_lines)
 
+# Legacy functions - kept for compatibility but not used with gutter system
+def add_line_numbers(input_text):
+    """Legacy function - now handled by separate gutter display"""
+    return input_text
 
 def update_input_with_line_numbers(input_textbox):
-    """
-    Updates the input textbox with fresh line numbers.
-
-    Args:
-        input_textbox (customtkinter.CTkTextbox): The input textbox widget to be updated.
-
-    Returns:
-        None
-    """
-    cursor_index = input_textbox.index("insert")  # e.g., "1.0"
-
-    # Get the current text from the input textbox
-    input_text = input_textbox.get("0.0", "end-1c").strip()  # Remove any extra newlines
-
-    # Remove existing line numbers and then add fresh ones
-    clean_text = remove_line_numbers(input_text)
-    numbered_text = add_line_numbers(clean_text)
-
-    # Clear the textbox and insert the newly formatted text with line numbers
-    input_textbox.delete("0.0", "end")
-    input_textbox.insert("0.0", numbered_text)
-
-    counter = 3
-    # Split the cursor index into line and character components
-    line, char = cursor_index.split(".")
-    line = int(line)  # Convert line to integer
-    char = int(char)  # Convert character to integer
-
-    if line > 9:
-        counter = 4
-    elif line > 99:
-        counter = 5
-
-    # Add 2 to the character position (for new number and dash added)
-    new_cursor_index = f"{line}.{char + counter}"  # Reconstruct the position string
-
-    # Restore the cursor position
-    input_textbox.mark_set("insert", new_cursor_index)
-    input_textbox.see("insert")  # Ensure the cursor remains in view
+    """Legacy function - now handled by separate gutter display"""
+    pass
 
 
 def assemble_function(input_textbox, assemble_button):
     """
-    Assembles the input program by adding line numbers,
-     removing them, and passing the code to the assembler.
+    Assembles the input program from the clean code editor.
 
     Args:
         input_textbox (customtkinter.CTkTextbox):
@@ -141,13 +166,10 @@ def assemble_function(input_textbox, assemble_button):
     """
     ErrorHandling.ErrorHandling.no_error = True  # Reset the error flag before assembly
 
-    # Get the input text and add line numbers
-    input_text = input_textbox.get("0.0", "end").strip()
-    numbered_text = add_line_numbers(input_text)  # Add line numbers to each line
+    # Get the clean input text (no line numbers in the editor)
+    clean_text = input_textbox.get("0.0", "end").strip()
 
-    # Now remove line numbers before sending the text to the assembler
-    clean_text = remove_line_numbers(numbered_text)  # Remove line numbers
-    # Pass the cleaned text to the assembler
+    # Send clean text to the assembler
     test.program_reader(clean_text)  # Reader function to handle the assembly process
     test.program_translator(clean_text)
     print(test.marie_memory)
@@ -278,6 +300,57 @@ def handle_paste():
     return None
 
 
+def copy_clean_code(input_textbox):
+    """
+    Copies the assembly code to clipboard (already clean since no line numbers in editor).
+
+    Args:
+        input_textbox (customtkinter.CTkTextbox): The input textbox widget with the code.
+
+    Returns:
+        str: "break" to prevent default copy behavior.
+    """
+    # Get the current text from the input textbox (already clean)
+    input_text = input_textbox.get("0.0", "end-1c").strip()
+    
+    # Copy to clipboard
+    input_textbox.clipboard_clear()
+    input_textbox.clipboard_append(input_text)
+    
+    # Optional: Show a brief confirmation
+    print("Code copied to clipboard!")
+    
+    # Return "break" to prevent the default Ctrl+C behavior
+    return "break"
+
+
+def copy_code(input_textbox):
+    """
+    Copies the assembly code to clipboard without line numbers.
+
+    Args:
+        input_textbox (customtkinter.CTkTextbox): The input textbox widget with the code.
+
+    Returns:
+        str: "break" to prevent default copy behavior.
+    """
+    # Get the current text from the input textbox
+    input_text = input_textbox.get("0.0", "end-1c").strip()
+    
+    # Remove line numbers to get clean code
+    clean_text = remove_line_numbers(input_text)
+    
+    # Copy to clipboard
+    input_textbox.clipboard_clear()
+    input_textbox.clipboard_append(clean_text)
+    
+    # Optional: Show a brief confirmation (you could add a status label for this)
+    print("Code copied to clipboard without line numbers!")
+    
+    # Return "break" to prevent the default Ctrl+C behavior
+    return "break"
+
+
 def open_assemble_button(assemble_button):
     """
     Enables the assemble button when the input textbox is updated.
@@ -301,79 +374,297 @@ def main():
     Returns:
         None
     """
-    global output_textbox
+    global output_textbox, line_numbers_enabled
+    line_numbers_enabled = True  # Global toggle for line numbers
+    
     customtkinter.set_appearance_mode("dark")
     customtkinter.set_default_color_theme("blue")
 
     # Create the main window
     app = customtkinter.CTk()
-    app.geometry("1000x700")
+    app.geometry("1200x750")
     app.title("Marie Assembler")  # Title for the window
+    app.minsize(800, 600)  # Set minimum window size
+    
+    # Configure grid weights for responsiveness
+    app.grid_columnconfigure(0, weight=1)
+    app.grid_rowconfigure(0, weight=0)  # Title row
+    app.grid_rowconfigure(1, weight=1)  # Main content row
+    app.grid_rowconfigure(2, weight=0)  # Button row
 
-    label = customtkinter.CTkLabel(app,
+    # Title
+    title_frame = customtkinter.CTkFrame(app, fg_color="transparent")
+    title_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
+    
+    label = customtkinter.CTkLabel(title_frame,
                                    text="Marie Assembler",
                                    fg_color="transparent",
                                    font=("Normal", 50))
-    label.place(relx=0.5, rely=0.1, anchor=customtkinter.CENTER)
+    label.pack()
 
-    input_label = customtkinter.CTkLabel(app, text="Input",
+    # Main content frame
+    main_frame = customtkinter.CTkFrame(app, fg_color="transparent")
+    main_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10, 30))
+    
+    # Configure main frame grid
+    main_frame.grid_columnconfigure(0, weight=1)  # Input section
+    main_frame.grid_columnconfigure(1, weight=0)  # Middle spacer
+    main_frame.grid_columnconfigure(2, weight=1)  # Output section
+    main_frame.grid_rowconfigure(0, weight=0)     # Labels row
+    main_frame.grid_rowconfigure(1, weight=1)     # Content row
+
+    # Input section with line numbers gutter
+    input_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+    input_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10))
+    input_frame.grid_columnconfigure(0, weight=0)  # Line numbers (fixed width)
+    input_frame.grid_columnconfigure(1, weight=1)  # Code editor (expandable)
+    input_frame.grid_rowconfigure(0, weight=0)  # Label
+    input_frame.grid_rowconfigure(1, weight=0)  # Controls
+    input_frame.grid_rowconfigure(2, weight=1)  # Editor area
+
+    # Input label and controls
+    input_header_frame = customtkinter.CTkFrame(input_frame, fg_color="transparent")
+    input_header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 5))
+    input_header_frame.grid_columnconfigure(0, weight=1)
+    input_header_frame.grid_columnconfigure(1, weight=0)
+    input_header_frame.grid_columnconfigure(2, weight=0)
+
+    input_label = customtkinter.CTkLabel(input_header_frame, text="Input",
                                         fg_color="transparent", font=("Normal", 20))
-    input_label.place(relx=0.1, rely=0.25, anchor=customtkinter.E)
-    input_textbox = customtkinter.CTkTextbox(master=app, width=400,
-                                             height=300, corner_radius=10, wrap="word",
-                                             font=("Normal", 14))
-    input_textbox.place(relx=0.45, rely=0.5, anchor=customtkinter.E)
+    input_label.grid(row=0, column=0, sticky="w")
+
+    def format_code():
+        """Format the assembly code with proper indentation"""
+        current_text = input_textbox.get("0.0", "end-1c").strip()
+        if current_text:
+            # Format the code
+            formatted_text = format_assembly_code(current_text)
+            # Update the textbox
+            input_textbox.delete("0.0", "end")
+            input_textbox.insert("0.0", formatted_text)
+            # Update line numbers
+            if line_numbers_enabled:
+                update_line_number_display()
+
+    def toggle_line_numbers():
+        """Toggle line numbers on/off"""
+        global line_numbers_enabled
+        line_numbers_enabled = not line_numbers_enabled
+        
+        if line_numbers_enabled:
+            line_number_display.grid(row=2, column=0, sticky="nsew", padx=(0, 5))
+            update_line_number_display()
+            toggle_button.configure(text="Hide Line #")
+        else:
+            line_number_display.grid_remove()
+            toggle_button.configure(text="Show Line #")
+
+    format_button = customtkinter.CTkButton(input_header_frame,
+                                           text="Format",
+                                           command=format_code,
+                                           width=80,
+                                           height=25,
+                                           corner_radius=5,
+                                           font=("Normal", 12))
+    format_button.grid(row=0, column=1, sticky="e", padx=(0, 5))
+
+    toggle_button = customtkinter.CTkButton(input_header_frame,
+                                           text="Hide Line #",
+                                           command=toggle_line_numbers,
+                                           width=100,
+                                           height=25,
+                                           corner_radius=5,
+                                           font=("Normal", 12))
+    toggle_button.grid(row=0, column=2, sticky="e")
+
+    # Editor container frame
+    editor_frame = customtkinter.CTkFrame(input_frame, fg_color="transparent")
+    editor_frame.grid(row=2, column=0, columnspan=2, sticky="nsew")
+    editor_frame.grid_columnconfigure(0, weight=0)  # Line numbers
+    editor_frame.grid_columnconfigure(1, weight=1)  # Code editor
+    editor_frame.grid_rowconfigure(0, weight=1)
+
+    # Line number display (read-only)
+    line_number_display = customtkinter.CTkTextbox(editor_frame, 
+                                                   corner_radius=10, 
+                                                   width=50,
+                                                   font=("Courier", 14),
+                                                   fg_color=("gray85", "gray25"))
+    line_number_display.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+    
+    # Main code editor (without line numbers)
+    input_textbox = customtkinter.CTkTextbox(editor_frame, 
+                                             corner_radius=10, 
+                                             wrap="word",
+                                             font=("Courier", 14))
+    input_textbox.grid(row=0, column=1, sticky="nsew")
+
+    def update_line_number_display():
+        """Update the line number display to match the code content"""
+        if not line_numbers_enabled:
+            return
+            
+        # Get total lines in the code editor
+        code_content = input_textbox.get("0.0", "end-1c")
+        lines = code_content.split('\n')
+        total_lines = len(lines)
+        
+        # Generate line numbers
+        line_numbers = []
+        for i in range(1, total_lines + 1):
+            line_numbers.append(str(i))
+        
+        # Update the line number display
+        line_number_display.configure(state="normal")
+        line_number_display.delete("0.0", "end")
+        line_number_display.insert("0.0", '\n'.join(line_numbers))
+        line_number_display.configure(state="disabled")  # Make it read-only
+
+    # Simple scroll synchronization
+    def sync_to_line_numbers():
+        """Sync line numbers to match code editor scroll position"""
+        if line_numbers_enabled:
+            try:
+                top, bottom = input_textbox.yview()
+                line_number_display.yview_moveto(top)
+            except tk.TclError:
+                pass
+
+    def sync_to_code_editor():
+        """Sync code editor to match line numbers scroll position"""
+        if line_numbers_enabled:
+            try:
+                top, bottom = line_number_display.yview()
+                input_textbox.yview_moveto(top)
+            except tk.TclError:
+                pass
+
+    # Track if we're currently syncing to prevent loops
+    is_syncing = False
+
+    def on_input_scroll(*args):
+        """Handle input textbox scroll events"""
+        global is_syncing
+        if not is_syncing and line_numbers_enabled:
+            is_syncing = True
+            app.after_idle(lambda: [sync_to_line_numbers(), setattr(__builtins__, 'is_syncing', False)])
+
+    def on_line_scroll(*args):
+        """Handle line number scroll events"""
+        global is_syncing
+        if not is_syncing and line_numbers_enabled:
+            is_syncing = True
+            app.after_idle(lambda: [sync_to_code_editor(), setattr(__builtins__, 'is_syncing', False)])
+
+    # Bind scroll events
+    input_textbox.bind("<MouseWheel>", lambda e: app.after_idle(sync_to_line_numbers))
+    input_textbox.bind("<Button-4>", lambda e: app.after_idle(sync_to_line_numbers))
+    input_textbox.bind("<Button-5>", lambda e: app.after_idle(sync_to_line_numbers))
+    
+    line_number_display.bind("<MouseWheel>", lambda e: app.after_idle(sync_to_code_editor))
+    line_number_display.bind("<Button-4>", lambda e: app.after_idle(sync_to_code_editor))
+    line_number_display.bind("<Button-5>", lambda e: app.after_idle(sync_to_code_editor))
+
+    # Handle scrollbar dragging by monitoring yview changes
+    def monitor_scroll_changes():
+        """Periodically check for scroll changes and sync accordingly"""
+        if line_numbers_enabled and not is_syncing:
+            try:
+                # Check if scroll positions are different
+                code_top, code_bottom = input_textbox.yview()
+                line_top, line_bottom = line_number_display.yview()
+                
+                # If positions differ by more than a small threshold, sync them
+                if abs(code_top - line_top) > 0.01:
+                    # Determine which one changed more recently and sync the other
+                    line_number_display.yview_moveto(code_top)
+                    
+            except tk.TclError:
+                pass
+        
+        # Schedule next check
+        app.after(100, monitor_scroll_changes)
+
+    # Start the scroll monitoring
+    monitor_scroll_changes()
+
+    # Output section
+    output_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+    output_frame.grid(row=0, column=2, rowspan=2, sticky="nsew", padx=(10, 0))
+    output_frame.grid_columnconfigure(0, weight=1)
+    output_frame.grid_columnconfigure(1, weight=0)  # Option menu
+    output_frame.grid_rowconfigure(0, weight=0)  # Label row
+    output_frame.grid_rowconfigure(1, weight=1)  # Textbox
+
+    # Output label and option menu in same row
+    output_label_frame = customtkinter.CTkFrame(output_frame, fg_color="transparent")
+    output_label_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+    output_label_frame.grid_columnconfigure(0, weight=1)
+    output_label_frame.grid_columnconfigure(1, weight=0)
+
+    output_label = customtkinter.CTkLabel(output_label_frame, text="Output",
+                                          fg_color="transparent", font=("Normal", 20))
+    output_label.grid(row=0, column=0, sticky="w")
 
     options = ["DEC", "HEX", "ASCII"]
-
-    # Create a CTkOptionMenu
     option_menu = customtkinter.CTkOptionMenu(
-        master=app,
-        values=options,  # List of options
-        command=option_changed  # Callback function
+        output_label_frame,
+        values=options,
+        command=option_changed
     )
+    option_menu.set("DEC")
+    option_menu.grid(row=0, column=1, sticky="e")
 
-    # Set default option
-    option_menu.set("DEC")  # Optional: Sets the default displayed option
-
-    # Place the menu in the window
-    option_menu.place(relx=0.80, rely=0.25, anchor=customtkinter.W)
-
-    output_label = customtkinter.CTkLabel(app, text="Output",
-                                          fg_color="transparent", font=("Normal", 20))
-    output_label.place(relx=0.55, rely=0.25, anchor=customtkinter.W)
-    output_textbox = customtkinter.CTkTextbox(master=app, width=400,
-                                              height=300, corner_radius=10, wrap="word")
-    output_textbox.place(relx=0.55, rely=0.5, anchor=customtkinter.W)
+    output_textbox = customtkinter.CTkTextbox(output_frame, corner_radius=10, wrap="word")
+    output_textbox.grid(row=1, column=0, columnspan=2, sticky="nsew")
     output_textbox.configure(state="disabled")
 
-    # Bind the Tab key to handle_tab
-    input_textbox.bind("<Tab>", lambda event: handle_tab(input_textbox))
-    input_textbox.bind("<KeyPress>", lambda event: open_assemble_button(assemble_button))
-    # Bind the paste operation (Ctrl+V or right-click paste) to handle_paste
-    input_textbox.bind("<Control-v>",
-                       lambda event: handle_paste())  # For Ctrl+V paste
-    input_textbox.bind("<Button-3>",
-                       lambda event: handle_paste())  # For right-click paste
-    input_textbox.bind("<Return>",
-                       lambda event: update_input_with_line_numbers(input_textbox))
+    # Button frame
+    button_frame = customtkinter.CTkFrame(app, fg_color="transparent")
+    button_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 20))
+    button_frame.grid_columnconfigure(0, weight=1)
+    button_frame.grid_columnconfigure(1, weight=0)
+    button_frame.grid_columnconfigure(2, weight=0)
+    button_frame.grid_columnconfigure(3, weight=1)
 
-    # Create and style the button
-    assemble_button = customtkinter.CTkButton(master=app,
+    # Create buttons with responsive positioning
+    assemble_button = customtkinter.CTkButton(button_frame,
                                               text="Assemble",
-                                              command=
-                                              lambda: assemble_function
-                                              (input_textbox, assemble_button),
+                                              command=lambda: assemble_function(input_textbox, assemble_button),
                                               width=200,
                                               height=40,
                                               corner_radius=10)
-    assemble_button.place(relx=0.35, rely=0.85, anchor=customtkinter.E)
+    assemble_button.grid(row=0, column=1, padx=(0, 10))
 
-    run_button = customtkinter.CTkButton(master=app, text="Run",
+    run_button = customtkinter.CTkButton(button_frame, text="Run",
                                          command=lambda: run_function(output_textbox, app),
                                          width=200, height=40,
                                          corner_radius=10)
-    run_button.place(relx=0.65, rely=0.85, anchor=customtkinter.W)
+    run_button.grid(row=0, column=2, padx=(10, 0))
+
+    # Bind keyboard events
+    input_textbox.bind("<Tab>", lambda event: handle_tab(input_textbox))
+    input_textbox.bind("<KeyPress>", lambda event: open_assemble_button(assemble_button))
+    # Bind Ctrl+C to copy code (now clean without line numbers)
+    input_textbox.bind("<Control-c>", lambda event: copy_clean_code(input_textbox))
+    # Bind the paste operation (Ctrl+V or right-click paste) to handle_paste
+    input_textbox.bind("<Control-v>", lambda event: handle_paste())
+    input_textbox.bind("<Button-3>", lambda event: handle_paste())
+    
+    # Update line numbers on text changes
+    def on_text_change(event):
+        """Update line number display when text changes"""
+        if line_numbers_enabled:
+            # Small delay to let the text change complete
+            app.after(10, update_line_number_display)
+    
+    # Bind text change events to update line numbers
+    input_textbox.bind("<KeyRelease>", on_text_change)
+    input_textbox.bind("<Button-1>", lambda event: app.after(10, update_line_number_display))
+    input_textbox.bind("<FocusIn>", lambda event: app.after(10, update_line_number_display))
+    
+    # Initialize line numbers display
+    update_line_number_display()
 
     # Run the application
     app.mainloop()
